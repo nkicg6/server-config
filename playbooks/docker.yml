@@ -1,0 +1,102 @@
+---
+- hosts: docker
+  become: true
+  pre_tasks:
+
+  - name: Start firewalld
+    tags: config
+    ansible.builtin.systemd:
+      state: started
+      name: firewalld
+
+  post_tasks:
+  
+  - name: Clean deps apt
+    tags: config
+    ansible.builtin.apt:
+      autoremove: yes
+      autoclean: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Clean deps dnf
+    tags: config
+    ansible.builtin.dnf:
+      autoremove: yes
+    when: ansible_distribution == "Rocky"
+    
+  tasks:
+
+  - name: Update packages
+    tags: config
+    ansible.builtin.dnf:
+      update_only: yes
+      update_cache: yes
+    when: ansible_distribution == "Rocky"
+
+  - name: Add Docker CentOS repos
+    tags: config
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: 'dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo'
+    args:
+      creates: /etc/yum.repos.d/docker-ce.repo
+    when: ansible_distribution == "Rocky"
+
+  - name: install docker
+    tags: docker
+    ansible.builtin.dnf:
+      name: 
+        - 'docker-ce'
+        - 'docker-ce-cli'
+        - 'containerd.io'
+      state: latest
+      update_cache: yes
+    when: ansible_distribution == "Rocky"
+
+  - name: Start Docker daemon
+    tags: docker
+    ansible.builtin.systemd:
+      state: started
+      name: docker
+      enabled: yes
+
+  - name: Usermod for docker group
+    tags: docker
+    ansible.builtin.user:
+      groups: docker
+      append: true
+      name: "{{ ansible_user }}"
+
+  - name: Allow HTTP/S firewalld
+    tags: docker, firewall
+    ansible.posix.firewalld:
+      service: "{{ item }}"
+      permanent: yes
+      state: enabled
+      immediate: yes
+    with_items:
+      - http
+      - https
+
+  - name: Firewalld rules for Docker Swarm
+    tags: docker, firewall
+    ansible.posix.firewalld:
+      permanent: yes
+      immediate: yes
+      zone: public
+      state: enabled
+      port: "{{ item.port }}/{{ item.proto }}"
+    with_items:
+      - {port: "2377", proto: "tcp"}
+      - {port: "7946", proto: "tcp"}
+      - {port: "7946", proto: "udp"}
+      - {port: "4789", proto: "udp"}
+
+  - name: Firewalld rules encrypted traffic
+    tags: docker, firewall
+    ansible.posix.firewalld:
+      permanent: yes
+      immediate: yes
+      zone: public
+      state: enabled
+      rich_rule: rule protocol value=esp accept

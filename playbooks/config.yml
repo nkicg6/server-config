@@ -1,0 +1,96 @@
+---
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: Update Ubuntu packages
+    tags: config
+    ansible.builtin.apt:
+      upgrade: yes
+      update_cache: yes
+      cache_valid_time: 86400
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Update Rocky packages
+    tags: config
+    ansible.builtin.dnf:
+      update_only: yes
+      update_cache: yes
+    when: ansible_distribution == "Rocky"
+
+  post_tasks:
+    
+  - name: clean deps apt
+    tags: config
+    ansible.builtin.apt:
+      autoremove: yes
+      autoclean: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: clean deps dnf
+    tags: config
+    ansible.builtin.dnf:
+      autoremove: yes
+    when: ansible_distribution == "Rocky"
+
+  tasks:
+
+  - name: Set hostname
+    tags: config
+    ansible.builtin.hostname:
+      name: "{{ new_hostname }}"
+      use: systemd
+
+  - name: Ensure login is secure.
+    tags: secure, config
+    ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      state: present
+      line: "PasswordAuthentication no"
+      regexp: '#?\s?PasswordAuthentication\s?\w{2}\w?'
+
+  - name: Ensure no root ssh.
+    tags: secure, config
+    ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      state: present
+      line: "PermitRootLogin no"
+      regexp: '#?\s?PermitRootLogin\s?\w{2}\w?' 
+
+  - name: fail2ban Ubuntu
+    tags: firewall, config
+    ansible.builtin.apt:
+      update_cache: yes
+      name: fail2ban
+      state: latest
+    when: ansible_distribution == "Ubuntu"
+
+  - name: fail2ban Rocky deps
+    tags: firewall, config
+    ansible.builtin.dnf:
+      name: epel-release
+      state: latest
+    when: ansible_distribution == "Rocky"
+
+  - name: fail2ban Rocky
+    tags: firewall, config
+    ansible.builtin.dnf:
+      name: fail2ban
+      state: latest
+    when: ansible_distribution == "Rocky"
+
+  - name: configure fail2ban ssh jail
+    tags: firewall, config
+    ansible.builtin.copy:
+      src: ../configs/jail.local
+      dest: /etc/fail2ban/jail.local
+      owner: root
+      group: root
+  
+  - name: Start fail2ban daemon
+    tags: firewall, config
+    ansible.builtin.systemd:
+      state: restarted 
+      name: fail2ban
+      enabled: yes
+

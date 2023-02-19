@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: Create wheel group
+    tags: setup
+    ansible.builtin.group:
+      name: wheel
+      state: present
+
+  - name: Allow wheel to have passwordless sudo
+    ansible.builtin.lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+      validate: visudo -cf %s
+    
+  tasks:
+      
+  - name: Create ansible user
+    tags: setup
+    ansible.builtin.user:
+      name: ansible
+      groups: "wheel"
+      append: yes
+      state: present
+      expires: -1
+      shell: /bin/bash
+      create_home: true
+      password: "{{ lookup('env','PASSWORD_HASH') }}"
+
+  post_tasks:
+    
+  - name: Add ansible user public key
+    tags: setup
+    ansible.posix.authorized_key:
+      user: ansible
+      state: present
+      key: "{{ lookup('file', '~/.ssh/ansible_ed.pub') }}"
