@@ -19,7 +19,7 @@
     when: ansible_distribution == "Rocky"
 
   post_tasks:
-    
+  
   - name: clean deps apt
     tags: config
     ansible.builtin.apt:
@@ -33,6 +33,20 @@
       autoremove: yes
     when: ansible_distribution == "Rocky"
 
+  - name: Start fail2ban daemon
+    tags: firewall, config
+    ansible.builtin.systemd:
+      state: restarted 
+      name: fail2ban
+      enabled: yes
+
+  - name: Restart sshd
+    tags: config, ssh
+    ansible.builtin.systemd:
+      state: restarted
+      name: sshd
+      enabled: yes
+
   tasks:
 
   - name: Set hostname
@@ -41,20 +55,20 @@
       name: "{{ new_hostname }}"
       use: systemd
 
-  - name: Ensure login is secure.
-    tags: secure, config
+  - name: Ensure login is secure
+    tags: config, ssh
     ansible.builtin.lineinfile:
       path: /etc/ssh/sshd_config
       state: present
       line: "PasswordAuthentication no"
       regexp: '#?\s?PasswordAuthentication\s?\w{2}\w?'
 
-  - name: Ensure no root ssh.
-    tags: secure, config
+  - name: Ensure no root ssh password
+    tags: config, ssh
     ansible.builtin.lineinfile:
       path: /etc/ssh/sshd_config
       state: present
-      line: "PermitRootLogin no"
+      line: "PermitRootLogin prohibit-password"
       regexp: '#?\s?PermitRootLogin\s?\w{2}\w?' 
 
   - name: fail2ban Ubuntu
@@ -86,11 +100,3 @@
       dest: /etc/fail2ban/jail.local
       owner: root
       group: root
-  
-  - name: Start fail2ban daemon
-    tags: firewall, config
-    ansible.builtin.systemd:
-      state: restarted 
-      name: fail2ban
-      enabled: yes
-

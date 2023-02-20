@@ -2,7 +2,7 @@
 
 Ansible playbooks and shell scripts to configure linux servers for various development or application hosting tasks. My goal is for these playbooks and scripts to be as cloud vendor agnostic as possible.
 
-Most of the playbooks are set up to work with Rocky Linux (Fedora) or Ubuntu (Debian) distributions. 
+Most of the playbooks are set up to work with Rocky Linux (RHEL) or Ubuntu (Debian) distributions. 
 
 At the moment, the playbooks use only core [ansible](https://github.com/ansible/ansible), without external extensions or user add ons. This is a personal preference, I like to keep things simple and minimize dependencies wherever possible.
 
@@ -11,7 +11,7 @@ At the moment, the playbooks use only core [ansible](https://github.com/ansible/
 ## Requirements
 
 1. Ansible (`ansible [core 2.14.2]`)
-2. Hashed password for the new ansible user (created with the `playbooks/ansible_user.yml`) playbook. Create the password (on linux) with `mkpasswd <your password> --method=sha-512` and save the hash in the `PASSWORD_HASH` variable
+2. Hashed password for the new ansible user (created with the `playbooks/ansible_user.yml`) playbook. Create the password (on linux) with `mkpasswd <your password> --method=sha-512` and save the hash in the `PASSWORD_HASH` environmental variable
 
 ## Contents
 
