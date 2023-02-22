@@ -1,6 +1,6 @@
 # Linux Server Playbooks
 
-Ansible playbooks and shell scripts to configure linux servers for various development or application hosting tasks. My goal is for these playbooks and scripts to be as cloud vendor agnostic as possible.
+Ansible playbooks to configure linux servers for various development or application hosting tasks. My goal is for these playbooks and scripts to be as cloud vendor agnostic as possible, and let me get a Linux server configured quickly and easily.
 
 Most of the playbooks are set up to work with Rocky Linux (RHEL) or Ubuntu (Debian) distributions. 
 
@@ -90,7 +90,96 @@ ansible-playbook playbooks/config.yml
 
 Now run other ansible playbooks as needed.
 
-# Maintenance and reference
+# Example with an AWS EC2 Instance
+
+https://mrunalgorde.medium.com/how-to-use-aws-cli-to-launch-an-ec2-instance-f68273a749ef
+
+EC2 is more complicated from the CLI. You need a VPC, security group, SSH key, image details, and instance type. The command looks like:
+
+```shell
+aws ec2 run-instances \
+    --image-id $UBUNTU \
+    --instance-type t2.medium \
+    --count 1 \
+    --key-name ansible@aws \
+    --security-group-ids $GroupId 
+    
+# get the IP
+
+aws ec2 describe-instances
+```
+
+Add the IP to `inventory` and confirm ansible can ping via: `ansible all -m ping` and use the ansible playbook: `config.yml` via:
+
+Where $USER is whatever platform user, for this AMI it is 'ubuntu'
+
+```shell
+source .secrets # to set the PASSWORD_HASH variable. previously made with mkpasswd
+ansible-playbook playbooks/ansible_user.yml --extra-vars='ansible_user=$USER'
+ansible-playbook playbooks/config.yml
+```
+
+Now run other ansible playbooks as needed.
+
+Below explains how to setup the security group, SSH key, image, and instance type to prepare the command above.
+
+## SSH Keys
+
+First, add a key pair or list existing key pairs:
+
+```shell
+# Add key pair
+aws ec2 import-key-pair --key-name 'ansible@aws' --public-key-material fileb://path/to/ssh/ansible_ed.pub
+# or list:
+aws ec2 describe-key-pairs
+```
+Save the `KeyPairId`
+
+## VPC
+
+I'll use my default VPC, you can list all VPCs with:
+
+```shell
+aws ec2 describe-vpcs
+```
+
+Save the `VpcId`
+
+To create a new VPC, see: [aws ec2 create-vpc](https://docs.aws.amazon.com/cli/latest/reference/ec2/create-vpc.html)
+
+## Security Group
+
+[Create a new security group](https://docs.aws.amazon.com/cli/latest/reference/ec2/create-security-group.html) (or list existing) and associate your VPC:
+
+```shell
+aws ec2 create-security-group --group-name linux-vm-sg --description "Default Linux SG" --vpc-id $VpcId
+# List existing
+aws ec2 describe-security-groups
+```
+Save the `GroupId`
+
+Allow TCP and HTTP ingress ([aws ec2 authorize-security-group-ingress](https://docs.aws.amazon.com/cli/latest/reference/ec2/authorize-security-group-ingress.html))
+
+```shell
+# SSH
+aws ec2 authorize-security-group-ingress \
+    --group-id $GroupId \
+    --protocol tcp \
+    --port 22 \
+    --cidr 0.0.0.0/0
+
+# HTTP
+aws ec2 authorize-security-group-ingress \
+    --group-id $GroupId \
+    --protocol tcp \
+    --port 80 \
+    --cidr 0.0.0.0/0
+```
+## AMI and instance type
+
+From the console (Feb 2023), Ubuntu 22.04LTS is `ami-0557a15b87f6559cf` (saved as `UBUNTU`), and choose your [instance size](https://aws.amazon.com/ec2/instance-types/).
+
+# Ansible and Server Reference
 
 Shortcuts and commands for other useful functions
 
@@ -98,19 +187,19 @@ Shortcuts and commands for other useful functions
 
 Get all facts from all servers:
 
-```
+```shell
 ansible all -m gather_facts
 ```
 
 Gather all facts from one server:
 
-```
+```shell
 ansible all -m gather_facts --limit <IP ADDR>
 ```
 
 Gather specific facts using a filter (in this case the prefix `ansible_distribution`):
 
-```
+```shell
 ansible all -m gather_facts -a 'filter=ansible_distribution*'
 ```
 
@@ -118,6 +207,7 @@ ansible all -m gather_facts -a 'filter=ansible_distribution*'
 
 To check fail2ban jail logs (in this case for `sshd`):
 
-```
+```shell
 fail2ban-client status sshd
 ```
+
