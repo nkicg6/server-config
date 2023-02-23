@@ -1,0 +1,44 @@
+---
+- hosts: all
+  user: ansible
+  gather_facts: no
+  pre_tasks:
+
+  - name: Check for Cargo
+    tags: config
+    ansible.builtin.stat:
+      path: $HOME/.cargo/env
+    register: cargo_exists
+
+  - name: Check for cargo
+    tags: config
+    ansible.builtin.shell: command -v cargo
+    register: iscargo
+    ignore_errors: yes
+
+  tasks:
+
+  - name: Get Rust Setup Script
+    tags: rust
+    ansible.builtin.get_url:
+      url: https://sh.rustup.rs
+      dest: $HOME/sh.rustup.rs
+      mode: '0755'
+      force: yes
+    register: downloaded
+    when: not cargo_exists.stat.exists
+
+  - name: install Rust and Cargo
+    tags: rust
+    ansible.builtin.shell: ./sh.rustup.rs -y
+    when: not cargo_exists.stat.exists
+
+  post_tasks:
+  - name: remove cargo if exists
+    when: downloaded
+    tags: rust
+    ansible.builtin.file:
+      path: $HOME/sh.rustup.rs
+      state: absent
+    
+    

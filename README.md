@@ -57,7 +57,7 @@ Startup and configure a Digital Ocean Ubuntu Droplet ([Reference](https://docs.d
 
 ```shell
 doctl compute droplet create perf-dev \
-    --image ubuntu-22-04-x64 \
+    --image ubuntu-22-04-x64 \ # rocky is rockylinux-9-x64
     --size s-1vcpu-2gb \
     --region nyc1 \
     --ssh-keys id-here,other-id-here \
@@ -80,7 +80,7 @@ The command should return the IP address and name, but otherwise you can check t
 doctl compute droplet list --format ID,Name,Public\ IPv4
 ```
 
-Add the IP to `inventory` and confirm ansible can ping via: `ansible all -m ping` and use the ansible playbook: `config.yml` via:
+Add the IP to `inventory` and use the ansible playbook: `config.yml` via:
 
 ```shell
 source .secrets # to set the PASSWORD_HASH variable. previously made with mkpasswd
@@ -203,6 +203,19 @@ Gather specific facts using a filter (in this case the prefix `ansible_distribut
 ansible all -m gather_facts -a 'filter=ansible_distribution*'
 ```
 
+Run just one task from a playbook based on a tag
+
+```shell
+ansible-playbook playbooks/rust.yml --tags "config"
+```
+Note that when you `become: true`, you become `root`. You can specify:
+
+```
+become: yes
+become_user: "{{ ansible_user }}"
+```
+To specify the user. 
+x
 ## Checking fail2ban logs/jails
 
 To check fail2ban jail logs (in this case for `sshd`):
