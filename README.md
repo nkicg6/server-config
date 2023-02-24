@@ -20,7 +20,7 @@ At the moment, the playbooks use only core [ansible](https://github.com/ansible/
 | `playbooks/ansible_user.yml` | Create the ansible user and add ansible ssh key for other playbooks  | Ubuntu, Rocky   |
 | `playbooks/config.yml`       | Set hostname, update packages, check defaults, configure fail2ban    | Ubuntu, Rocky   |
 | `playbooks/docker.yml`       | Install and configure Docker, configure `firewalld` for docker swarm | Rocky           |
-| `playbooks/rust.yml`         | In progress                                                          |                 |
+| `playbooks/rust.yml`         | In progress                                                          | Ubuntu, Rocky   |
 | `playbooks/postgres.yml`     | In progress                                                          |                 |
 | `playbooks/valgrind.yml`     | In progress (for performance profiling/benchmarking)                 |                 |
 

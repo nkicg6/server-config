@@ -10,12 +10,6 @@
       path: $HOME/.cargo/env
     register: cargo_exists
 
-  - name: Check for cargo
-    tags: config
-    ansible.builtin.shell: command -v cargo
-    register: iscargo
-    ignore_errors: yes
-
   tasks:
 
   - name: Get Rust Setup Script
@@ -25,7 +19,6 @@
       dest: $HOME/sh.rustup.rs
       mode: '0755'
       force: yes
-    register: downloaded
     when: not cargo_exists.stat.exists
 
   - name: install Rust and Cargo
@@ -35,10 +28,8 @@
 
   post_tasks:
   - name: remove cargo if exists
-    when: downloaded
     tags: rust
     ansible.builtin.file:
       path: $HOME/sh.rustup.rs
       state: absent
-    
-    
+
