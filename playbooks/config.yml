@@ -8,7 +8,6 @@
     ansible.builtin.apt:
       upgrade: yes
       update_cache: yes
-      cache_valid_time: 86400
     when: ansible_distribution == "Ubuntu"
 
   - name: Update Rocky packages
@@ -17,6 +16,13 @@
       update_only: yes
       update_cache: yes
     when: ansible_distribution == "Rocky"
+
+  - name: Check if reboot required
+    tags:
+      - config
+    ansible.builtin.stat:
+      path: /var/run/reboot-required
+    register: boot
 
   post_tasks:
   
@@ -34,18 +40,31 @@
     when: ansible_distribution == "Rocky"
 
   - name: Start fail2ban daemon
-    tags: firewall, config
+    tags:
+      - firewall
+      - config
     ansible.builtin.systemd:
       state: restarted 
       name: fail2ban
       enabled: yes
 
   - name: Restart sshd
-    tags: config, ssh
+    tags:
+      - config
+      - ssh
     ansible.builtin.systemd:
       state: restarted
       name: sshd
       enabled: yes
+
+  - name: Reboot if needed
+    reboot:
+      connect_timeout: 5
+      reboot_timeout: 300
+      pre_reboot_delay: 0
+      post_reboot_delay: 30
+      test_command: uptime
+    when: boot.stat.exists
 
   tasks:
 
@@ -56,7 +75,9 @@
       use: systemd
 
   - name: Ensure login is secure
-    tags: config, ssh
+    tags:
+      - config
+      - ssh
     ansible.builtin.lineinfile:
       path: /etc/ssh/sshd_config
       state: present
@@ -64,7 +85,9 @@
       regexp: '#?\s?PasswordAuthentication\s?\w{2}\w?'
 
   - name: Ensure no root ssh password
-    tags: config, ssh
+    tags:
+      - config
+      - ssh
     ansible.builtin.lineinfile:
       path: /etc/ssh/sshd_config
       state: present
@@ -72,7 +95,9 @@
       regexp: '#?\s?PermitRootLogin\s?\w{2}\w?' 
 
   - name: fail2ban Ubuntu
-    tags: firewall, config
+    tags:
+      - firewall
+      - config
     ansible.builtin.apt:
       update_cache: yes
       name: fail2ban
@@ -80,21 +105,27 @@
     when: ansible_distribution == "Ubuntu"
 
   - name: fail2ban Rocky deps
-    tags: firewall, config
+    tags:
+      - firewall
+      - config
     ansible.builtin.dnf:
       name: epel-release
       state: latest
     when: ansible_distribution == "Rocky"
 
   - name: fail2ban Rocky
-    tags: firewall, config
+    tags:
+      - firewall
+      - config
     ansible.builtin.dnf:
       name: fail2ban
       state: latest
     when: ansible_distribution == "Rocky"
 
   - name: configure fail2ban ssh jail
-    tags: firewall, config
+    tags:
+      - firewall
+      - config
     ansible.builtin.copy:
       src: ../configs/jail.local
       dest: /etc/fail2ban/jail.local

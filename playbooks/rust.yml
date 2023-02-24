@@ -1,6 +1,5 @@
 ---
 - hosts: all
-  user: ansible
   gather_facts: no
   pre_tasks:
 
